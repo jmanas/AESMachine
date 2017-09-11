@@ -12,7 +12,6 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
-import java.io.ByteArrayOutputStream;
 import java.security.SecureRandom;
 
 /**
@@ -20,11 +19,11 @@ import java.security.SecureRandom;
  * http://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf
  *
  * @author jose a. manas
- * @date 12.6.2017
+ * @version 11.9.2017
  */
 public class Encryptor
         implements ActionListener {
-    private static final String TITLE = "AES Machine - Encryption (12.6.2017)";
+    private static final String TITLE = "AES Machine - Encryption (11.9.2017)";
     private static final String PADDING = "PKCS5Padding";
 
     /*
@@ -36,7 +35,7 @@ public class Encryptor
      *
      * https://docs.oracle.com/javase/8/docs/api/javax/crypto/Cipher.html
      */
-    private static final int LINES = 5;
+    private static final int LINES = 4;
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -91,7 +90,7 @@ public class Encryptor
 
         modeComboBox = new JComboBox<>();
         modeComboBox.addItem("ECB - Electronic Code Book");
-        modeComboBox.addItem("CBC - Cypher Book Chaining");
+        modeComboBox.addItem("CBC - Cypher Block Chaining");
         modeComboBox.addItem("CFB - Cypher Feedback");
         modeComboBox.addItem("OFB - Output Feedback");
         modeComboBox.addItem("CTR - Counter Mode");
@@ -111,9 +110,9 @@ public class Encryptor
         decryptButton = new JButton("decrypt");
         encryptButton.addActionListener(this);
         decryptButton.addActionListener(this);
-        redInArea = new JTextArea(LINES, 40);
-        blackArea = new JTextArea(LINES, 40);
-        redOutArea = new JTextArea(LINES, 40);
+        redInArea = new JTextArea(LINES + 1, 40);
+        blackArea = new JTextArea(LINES + 2, 40);   // room for padding
+        redOutArea = new JTextArea(LINES + 1, 40);
         panel.add("tab", zeroRedButton);
         panel.add(serieRedButton);
         panel.add(patternRedButton);
@@ -184,12 +183,12 @@ public class Encryptor
 
             if (event.getSource() == encryptButton) {
                 blackArea.setText("");
-                byte[] key = readBytes(keyField.getText());
+                byte[] key = getBytes(keyField, 16);
                 String mode = getMode();
                 byte[] iv = null;
                 if (ivField.isEnabled())
-                    iv = readBytes(ivField.getText());
-                byte[] red = readBytes(redInArea.getText());
+                    iv = getBytes(ivField, 16);
+                byte[] red = Hex.readBytes(redInArea.getText());
 
                 Cipher cipher = Cipher.getInstance("AES/" + mode + "/" + PADDING);
                 SecretKeySpec secretKeySpec = new SecretKeySpec(key, "aes");
@@ -205,15 +204,12 @@ public class Encryptor
             }
             if (event.getSource() == decryptButton) {
                 redOutArea.setText("");
-                byte[] key = readBytes(keyField.getText());
+                byte[] key = getBytes(keyField, 16);
                 String mode = getMode();
                 byte[] iv = null;
-                ivField.setEnabled(false);
-                if (!mode.equals("ECB")) {
-                    ivField.setEnabled(true);
-                    iv = readBytes(ivField.getText());
-                }
-                byte[] black = readBytes(blackArea.getText());
+                if (ivField.isEnabled())
+                    iv = getBytes(ivField, 16);
+                byte[] black = Hex.readBytes(blackArea.getText());
 
                 Cipher cipher = Cipher.getInstance("AES/" + mode + "/" + PADDING);
                 SecretKeySpec secretKeySpec = new SecretKeySpec(key, "aes");
@@ -242,26 +238,17 @@ public class Encryptor
         return "ECB";
     }
 
-    private byte[] readBytes(String text) {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        String s = "";
-        for (char ch : text.toCharArray()) {
-            if (!isHexDigit(ch))
-                continue;
-            s += ch;
-            if (s.length() == 2) {
-                out.write(Hex.toByte(s));
-                s = "";
-            }
+    private byte[] getBytes(JTextField field, int nBytes) {
+        byte[] readBytes = Hex.readBytes(field.getText());
+        if (readBytes.length == nBytes)
+            return readBytes;
+        byte[] keyBytes = new byte[nBytes];
+        for (int i = 0; i < keyBytes.length; i++) {
+            if (i < readBytes.length)
+                keyBytes[i] = readBytes[i];
         }
-        return out.toByteArray();
-    }
-
-    private boolean isHexDigit(char ch) {
-        if ('0' <= ch && ch <= '9') return true;
-        if ('a' <= ch && ch <= 'f') return true;
-        if ('A' <= ch && ch <= 'F') return true;
-        return false;
+        field.setText(Hex.toString(keyBytes));
+        return keyBytes;
     }
 
     private void writeBytes(JTextArea area, byte[] bytes) {

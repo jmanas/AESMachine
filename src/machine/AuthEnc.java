@@ -11,7 +11,6 @@ import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.ByteArrayOutputStream;
 import java.security.SecureRandom;
 
 /**
@@ -19,14 +18,14 @@ import java.security.SecureRandom;
  * http://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
  *
  * @author jose a. manas
- * @date 12.6.2017
+ * @version 11.9.2017
  */
 public class AuthEnc
         implements ActionListener {
-    private static final String TITLE = "AES Machine - Authenticated Encryption (12.6.2017)";
+    private static final String TITLE = "AES Machine - Authenticated Encryption (11.9.2017)";
     private static final String PADDING = "NoPadding";
 
-    private static final int LINES = 5;
+    private static final int LINES = 4;
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -105,9 +104,9 @@ public class AuthEnc
         decryptButton = new JButton("decrypt");
         encryptButton.addActionListener(this);
         decryptButton.addActionListener(this);
-        redInArea = new JTextArea(LINES, 40);
-        blackArea = new JTextArea(LINES, 40);
-        redOutArea = new JTextArea(LINES, 40);
+        redInArea = new JTextArea(LINES + 1, 40);
+        blackArea = new JTextArea(LINES + 2, 40);
+        redOutArea = new JTextArea(LINES + 1, 40);
         panel.add("tab", zeroRedButton);
         panel.add(serieRedButton);
         panel.add(patternRedButton);
@@ -178,11 +177,11 @@ public class AuthEnc
 
             if (event.getSource() == encryptButton) {
                 blackArea.setText("");
-                byte[] key = readBytes(keyField.getText());
+                byte[] key = getBytes(keyField, 16);
                 String mode = getMode();
-                byte[] nonce = readBytes(nonceField.getText());
+                byte[] nonce = getBytes(nonceField, 16);
                 byte[] aad = getAAD(tagField.getText());
-                byte[] red = readBytes(redInArea.getText());
+                byte[] red = Hex.readBytes(redInArea.getText());
 
                 Cipher cipher = Cipher.getInstance("AES/" + mode + "/" + PADDING);
                 SecretKeySpec secretKeySpec = new SecretKeySpec(key, "aes");
@@ -195,11 +194,11 @@ public class AuthEnc
             }
             if (event.getSource() == decryptButton) {
                 redOutArea.setText("");
-                byte[] key = readBytes(keyField.getText());
+                byte[] key = getBytes(keyField, 16);
                 String mode = getMode();
-                byte[] nonce = readBytes(nonceField.getText());
+                byte[] nonce = getBytes(nonceField, 16);
                 byte[] aad = getAAD(tagField.getText());
-                byte[] black = readBytes(blackArea.getText());
+                byte[] black = Hex.readBytes(blackArea.getText());
 
                 Cipher cipher = Cipher.getInstance("AES/" + mode + "/" + PADDING);
                 SecretKeySpec secretKeySpec = new SecretKeySpec(key, "aes");
@@ -222,30 +221,21 @@ public class AuthEnc
         return "GCM";
     }
 
-    private byte[] readBytes(String text) {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        String s = "";
-        for (char ch : text.toCharArray()) {
-            if (!isHexDigit(ch))
-                continue;
-            s += ch;
-            if (s.length() == 2) {
-                out.write(Hex.toByte(s));
-                s = "";
-            }
+    private byte[] getBytes(JTextField field, int nBytes) {
+        byte[] readBytes = Hex.readBytes(field.getText());
+        if (readBytes.length == nBytes)
+            return readBytes;
+        byte[] keyBytes = new byte[nBytes];
+        for (int i = 0; i < keyBytes.length; i++) {
+            if (i < readBytes.length)
+                keyBytes[i] = readBytes[i];
         }
-        return out.toByteArray();
-    }
-
-    private boolean isHexDigit(char ch) {
-        if ('0' <= ch && ch <= '9') return true;
-        if ('a' <= ch && ch <= 'f') return true;
-        if ('A' <= ch && ch <= 'F') return true;
-        return false;
+        field.setText(Hex.toString(keyBytes));
+        return keyBytes;
     }
 
     private byte[] getAAD(String text) {
-        byte[] input = readBytes(text);
+        byte[] input = Hex.readBytes(text);
         int tlen = 128 / 8; // max: 128 bits
         if (input.length < 120 / 8)
             tlen = 120 / 8;
