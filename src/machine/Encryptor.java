@@ -242,13 +242,13 @@ public class Encryptor
         byte[] readBytes = Hex.readBytes(field.getText());
         if (readBytes.length == nBytes)
             return readBytes;
-        byte[] keyBytes = new byte[nBytes];
-        for (int i = 0; i < keyBytes.length; i++) {
-            if (i < readBytes.length)
-                keyBytes[i] = readBytes[i];
-        }
-        field.setText(Hex.toString(keyBytes));
-        return keyBytes;
+        byte[] bytes = new byte[nBytes];
+        int src = readBytes.length - 1;
+        int dst = bytes.length - 1;
+        while (src >= 0 && dst >= 0)
+            bytes[dst--] = readBytes[src--];
+        field.setText(Hex.toString(bytes));
+        return bytes;
     }
 
     private void writeBytes(JTextArea area, byte[] bytes) {

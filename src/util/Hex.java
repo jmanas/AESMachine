@@ -1,6 +1,6 @@
 package util;
 
-import java.util.ArrayList;
+import java.math.BigInteger;
 
 /**
  * Created by jose on 12-Jun-17.
@@ -12,7 +12,7 @@ public class Hex {
 
     public static String toString(byte[] bytes) {
         StringBuilder builder = new StringBuilder();
-        for (byte b: bytes)
+        for (byte b : bytes)
             builder.append(String.format("%02X ", b));
         return builder.toString();
     }
@@ -38,24 +38,20 @@ public class Hex {
     }
 
     public static byte[] readBytes(String text) {
-        ArrayList<Byte> byteList = new ArrayList<>();
-        boolean even = true;
+        BigInteger n = BigInteger.ZERO;
+        int digits = 0;
         for (char ch : text.toCharArray()) {
-            if (!isHexDigit(ch))
-                continue;
-            byte b;
-            if (even) {
-                b = (byte) (hex2int(ch) << 4);
-            } else {
-                b = byteList.remove(byteList.size()-1);
-                b = (byte) (b + hex2int(ch));
+            if (isHexDigit(ch)) {
+                digits++;
+                n = n.shiftLeft(4).add(BigInteger.valueOf(hex2int(ch)));
             }
-            byteList.add(b);
-            even = !even;
         }
-        byte[] bytes = new byte[byteList.size()];
-        for (int i = 0; i < bytes.length; i++)
-            bytes[i] = byteList.get(i);
-        return bytes;
+        byte[] bytes0 = n.toByteArray();
+        byte[] bytes1 = new byte[(digits + 1) / 2];
+        int src = bytes0.length - 1;
+        int dst = bytes1.length - 1;
+        while (src >= 0 && dst >= 0)
+            bytes1[dst--] = bytes0[src--];
+        return bytes1;
     }
 }
